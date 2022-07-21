@@ -22,7 +22,7 @@ package org.apache.cxf.common.jaxb;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -63,11 +63,11 @@ public final class JAXBContextCache {
     public static final class CachedContextAndSchemas {
         private final JAXBContext context;
         private final Set<Class<?>> classes;
-        private final WeakReference<CachedContextAndSchemasInternal> ccas;
+        private final SoftReference<CachedContextAndSchemasInternal> ccas;
         private CachedContextAndSchemas(JAXBContext context, Set<Class<?>> classes, CachedContextAndSchemasInternal i) {
             this.context = context;
             this.classes = classes;
-            ccas = new WeakReference<>(i);
+            ccas = new SoftReference<>(i);
         }
         public JAXBContext getContext() {
             return context;
@@ -92,13 +92,13 @@ public final class JAXBContextCache {
 
     }
     private static final class CachedContextAndSchemasInternal {
-        private final WeakReference<JAXBContext> context;
-        private final WeakReference<Set<Class<?>>> classes;
+        private final SoftReference<JAXBContext> context;
+        private final SoftReference<Set<Class<?>>> classes;
         private Collection<DOMSource> schemas;
 
         CachedContextAndSchemasInternal(JAXBContext context, Set<Class<?>> classes) {
-            this.context = new WeakReference<>(context);
-            this.classes = new WeakReference<>(classes);
+            this.context = new SoftReference<>(context);
+            this.classes = new SoftReference<>(classes);
         }
 
         public JAXBContext getContext() {
