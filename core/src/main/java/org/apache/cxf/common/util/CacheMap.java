@@ -22,6 +22,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 
 
 /**
@@ -43,8 +45,8 @@ import java.util.WeakHashMap;
  * </b>
  */
 public class CacheMap<K, V> implements Map<K, V> {
-    Map<K, V> mainDataMap = new WeakHashMap<K, V>();
-    Map<K, V> extraKeyMap = new WeakIdentityHashMap<K, V>();
+    Map<K, V> mainDataMap = new HashMap<K, V>();
+    Map<K, V> extraKeyMap = new IdentityHashMap<K, V>();
 
     public CacheMap() {
         

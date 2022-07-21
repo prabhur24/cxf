@@ -253,7 +253,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
     }
 
     @Override
-    public synchronized Service create() {
+    public Service create() {
         reset();
         sendEvent(Event.START_CREATE);
         initializeServiceConfigurations();
