@@ -78,6 +78,7 @@ public class ClientFactoryBean extends AbstractWSDLBasedEndpointFactory {
         } 
         return null;
     }
+
     public Client create() {
         getServiceFactory().reset();
         if (getServiceFactory().getProperties() == null) {
