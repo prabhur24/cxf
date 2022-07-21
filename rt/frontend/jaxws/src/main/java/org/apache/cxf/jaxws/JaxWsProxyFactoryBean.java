@@ -129,7 +129,7 @@ public class JaxWsProxyFactoryBean extends ClientProxyFactoryBean {
      * before making remote calls
      */
     @Override
-    public synchronized Object create() {
+    public Object create() {
         ClassLoaderHolder orig = null;
         try {
             if (getBus() != null) {

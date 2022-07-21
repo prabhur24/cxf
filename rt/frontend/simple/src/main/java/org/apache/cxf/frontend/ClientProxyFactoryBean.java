@@ -122,7 +122,7 @@ public class ClientProxyFactoryBean extends AbstractBasicInterceptorProvider {
      *
      * @return the proxy. You must cast the returned object to the appropriate class before using it.
      */
-    public synchronized Object create() {
+    public Object create() {
         ClassLoaderHolder orig = null;
         ClassLoader loader = null;
         try {
