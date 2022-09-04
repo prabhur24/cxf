@@ -61,6 +61,9 @@ public final class JAXBContextCache {
 	 * has a chance to copy those into a place where they can hold onto it strongly as
 	 * needed.
 	 */
+	
+	static CachedContextAndSchemas CONTEXT_AND_SCHEMAS;
+	
 	public static final class CachedContextAndSchemas {
 		private final JAXBContext context;
 		private final Set<Class<?>> classes;
@@ -157,14 +160,18 @@ public final class JAXBContextCache {
 		JAXBUtils.scanPackages(classes, OBJECT_FACTORY_CACHE);
 	}
 
-	public static CachedContextAndSchemas getCachedContextAndSchemas(Class<?>... cls) throws JAXBException {
-		Set<Class<?>> classes = new HashSet<Class<?>>();
-		for (Class<?> c : cls) {
-			classes.add(c);
-		}
-		scanPackages(classes);
-		return JAXBContextCache.getCachedContextAndSchemas(classes, null, null, null, false);
-	}
+    public static CachedContextAndSchemas getCachedContextAndSchemas(Class<?>... cls) throws JAXBException {
+        Set<Class<?>> classes = new HashSet<Class<?>>();
+        for (Class<?> c : cls) {
+            classes.add(c);
+        }
+        scanPackages(classes);
+        if (CONTEXT_AND_SCHEMAS != null) {
+            return CONTEXT_AND_SCHEMAS;
+        }
+        CONTEXT_AND_SCHEMAS = JAXBContextCache.getCachedContextAndSchemas(classes, null, null, null, false);
+        return CONTEXT_AND_SCHEMAS;
+    }
 
 	public static CachedContextAndSchemas getCachedContextAndSchemas(String pkg, Map<String, Object> props,
 			ClassLoader loader) throws JAXBException {
