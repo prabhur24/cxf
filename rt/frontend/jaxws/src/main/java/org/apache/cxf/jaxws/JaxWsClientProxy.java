@@ -27,6 +27,7 @@ import java.net.HttpURLConnection;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.namespace.QName;
@@ -62,11 +63,10 @@ import org.apache.cxf.jaxws.support.JaxWsEndpointImpl;
 import org.apache.cxf.service.invoker.MethodDispatcher;
 import org.apache.cxf.service.model.BindingOperationInfo;
 
-public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implements
-    BindingProvider {
+public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implements BindingProvider {
 
     public static final String THREAD_LOCAL_REQUEST_CONTEXT = "thread.local.request.context";
-    
+
     private static final Logger LOG = LogUtils.getL7dLogger(JaxWsClientProxy.class);
 
     private Binding binding;
@@ -78,6 +78,7 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
         setupEndpointAddressContext(getClient().getEndpoint());
         this.builder = new EndpointReferenceBuilder((JaxWsEndpointImpl)getClient().getEndpoint());
     }
+
     public void close() throws IOException {
         super.close();
         binding = null;
@@ -87,8 +88,8 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
     private void setupEndpointAddressContext(Endpoint endpoint) {
         // NOTE for jms transport the address would be null
         if (null != endpoint && null != endpoint.getEndpointInfo().getAddress()) {
-            getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, 
-                                      endpoint.getEndpointInfo().getAddress());
+            getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY,
+                                    endpoint.getEndpointInfo().getAddress());
         }
     }
 
@@ -99,15 +100,13 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
 
         Endpoint endpoint = getClient().getEndpoint();
         String address = endpoint.getEndpointInfo().getAddress();
-        MethodDispatcher dispatcher = (MethodDispatcher)endpoint.getService().get(
-                                                                                  MethodDispatcher.class
-                                                                                      .getName());
+        MethodDispatcher dispatcher = (MethodDispatcher)endpoint.getService()
+            .get(MethodDispatcher.class.getName());
         Object[] params = args;
         if (null == params) {
             params = new Object[0];
-        }        
-        
-        
+        }
+
         try {
             if (method.getDeclaringClass().equals(BindingProvider.class)
                 || method.getDeclaringClass().equals(Object.class)
@@ -119,7 +118,7 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
         } catch (InvocationTargetException e) {
             throw e.getCause();
         }
-        
+
         BindingOperationInfo oi = dispatcher.getBindingOperation(method, endpoint);
         if (oi == null) {
             Message msg = new Message("NO_BINDING_OPERATION_INFO", LOG, method.getName());
@@ -134,7 +133,11 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
             if (isAsync) {
                 result = invokeAsync(method, oi, params);
             } else {
+                long startTime = System.currentTimeMillis();
                 result = invokeSync(method, oi, params);
+                long endTime = System.currentTimeMillis();
+                LOG.log(Level.SEVERE,
+                        "Time took to invokeSync thread " + String.valueOf(endTime - startTime));
             }
         } catch (WebServiceException wex) {
             throw wex;
@@ -156,22 +159,26 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
                 if (soapFault == null) {
                     throw new WebServiceException(ex);
                 }
-                SOAPFaultException  exception = new SOAPFaultException(soapFault);
+                SOAPFaultException exception = new SOAPFaultException(soapFault);
                 if (ex instanceof Fault && ex.getCause() != null) {
                     exception.initCause(ex.getCause());
                 } else {
                     exception.initCause(ex);
                 }
-                throw exception;                
+                throw exception;
             } else {
                 throw new WebServiceException(ex);
             }
         } finally {
+            long startTime = System.currentTimeMillis();
             if (addressChanged(address)) {
                 setupEndpointAddressContext(getClient().getEndpoint());
             }
+            long endTime = System.currentTimeMillis();
+            LOG.log(Level.SEVERE, "Time took to invokeSyncfinal thread " + String.valueOf(endTime - startTime));
         }
-        
+
+        long startTime = System.currentTimeMillis();
         Map<String, Object> respContext = client.getResponseContext();
         Map<String, Scope> scopes = CastUtils.cast((Map<?, ?>)respContext.get(WrappedMessageContext.SCOPES));
         if (scopes != null) {
@@ -181,49 +188,53 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
                 }
             }
         }
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE, "Time took to invokeSyncscoperemove thread " + String.valueOf(endTime - startTime));
         return adjustObject(result);
     }
+
     boolean isAsync(Method m) {
         return m.getName().endsWith("Async")
-            && (Future.class.equals(m.getReturnType()) 
-                || Response.class.equals(m.getReturnType()));
+               && (Future.class.equals(m.getReturnType()) || Response.class.equals(m.getReturnType()));
     }
-    
+
     static SOAPFault createSoapFault(SOAPBinding binding, Exception ex) throws SOAPException {
         SOAPFault soapFault;
         try {
             soapFault = binding.getSOAPFactory().createFault();
         } catch (Throwable t) {
-            //probably an old version of saaj or something that is not allowing createFault 
-            //method to work.  Try the saaj 1.2 method of doing this.
+            // probably an old version of saaj or something that is not allowing createFault
+            // method to work. Try the saaj 1.2 method of doing this.
             try {
-                soapFault = binding.getMessageFactory().createMessage()
-                    .getSOAPPart().getEnvelope().getBody().addFault();
+                soapFault = binding.getMessageFactory().createMessage().getSOAPPart().getEnvelope().getBody()
+                    .addFault();
             } catch (Throwable t2) {
-                //still didn't work, we'll just throw what we have
+                // still didn't work, we'll just throw what we have
                 return null;
-            }                        
+            }
         }
-        
+
         if (ex instanceof SoapFault) {
             if (!soapFault.getNamespaceURI().equals(((SoapFault)ex).getFaultCode().getNamespaceURI())
                 && SOAPConstants.URI_NS_SOAP_1_1_ENVELOPE
                     .equals(((SoapFault)ex).getFaultCode().getNamespaceURI())) {
-                //change to 1.1
+                // change to 1.1
                 try {
                     soapFault = SAAJFactoryResolver.createSOAPFactory(null).createFault();
                 } catch (Throwable t) {
-                    //ignore
+                    // ignore
                 }
             }
-            final boolean isSoap11 = SOAPConstants.URI_NS_SOAP_1_1_ENVELOPE.equals(soapFault.getNamespaceURI());
-            
+            final boolean isSoap11 = SOAPConstants.URI_NS_SOAP_1_1_ENVELOPE
+                .equals(soapFault.getNamespaceURI());
+
             if (isSoap11 || ((SoapFault)ex).getLang() == null) {
                 soapFault.setFaultString(((SoapFault)ex).getReason());
             } else {
-                soapFault.setFaultString(((SoapFault)ex).getReason(), stringToLocale(((SoapFault)ex).getLang()));
+                soapFault.setFaultString(((SoapFault)ex).getReason(),
+                                         stringToLocale(((SoapFault)ex).getLang()));
             }
-            
+
             SAAJUtils.setFaultCode(soapFault, ((SoapFault)ex).getFaultCode());
             String role = ((SoapFault)ex).getRole();
             if (role != null) {
@@ -232,13 +243,12 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
             if (((SoapFault)ex).getSubCodes() != null && !isSoap11) {
                 // set the subcode only if it is supported (e.g, 1.2)
                 for (QName fsc : ((SoapFault)ex).getSubCodes()) {
-                    soapFault.appendFaultSubcode(fsc);    
+                    soapFault.appendFaultSubcode(fsc);
                 }
             }
 
             if (((SoapFault)ex).hasDetails()) {
-                Node nd = soapFault.getOwnerDocument().importNode(((SoapFault)ex).getDetail(),
-                                                                  true);
+                Node nd = soapFault.getOwnerDocument().importNode(((SoapFault)ex).getDetail(), true);
                 nd = nd.getFirstChild();
                 soapFault.addDetail();
                 while (nd != null) {
@@ -252,10 +262,10 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
             if (msg != null) {
                 soapFault.setFaultString(msg);
             }
-        }      
+        }
         return soapFault;
     }
-    
+
     private static Locale stringToLocale(String locale) {
         String parts[] = locale.split("_", -1);
         if (parts.length == 1) {
@@ -268,8 +278,7 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
     }
 
     private boolean addressChanged(String address) {
-        return !(address == null
-                 || getClient().getEndpoint().getEndpointInfo() == null
+        return !(address == null || getClient().getEndpoint().getEndpointInfo() == null
                  || address.equals(getClient().getEndpoint().getEndpointInfo().getAddress()));
     }
 
@@ -277,7 +286,7 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
     private Object invokeAsync(Method method, BindingOperationInfo oi, Object[] params) throws Exception {
 
         client.setExecutor(getClient().getEndpoint().getExecutor());
-        
+
         AsyncHandler<Object> handler;
         if (params.length > 0 && params[params.length - 1] instanceof AsyncHandler) {
             handler = (AsyncHandler<Object>)params[params.length - 1];
@@ -290,7 +299,7 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
             handler = null;
         }
         ClientCallback callback = new JaxwsClientCallback<Object>(handler, this);
-             
+
         Response<Object> ret = new JaxwsResponseCallback<Object>(callback);
         client.invoke(callback, oi, params);
         return ret;
@@ -300,17 +309,14 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
         if (client == null) {
             throw new IllegalStateException("The client has been closed.");
         }
-        return new WrappedMessageContext(this.getClient().getRequestContext(),
-                                         null,
-                                         Scope.APPLICATION);
+        return new WrappedMessageContext(this.getClient().getRequestContext(), null, Scope.APPLICATION);
     }
+
     public Map<String, Object> getResponseContext() {
         if (client == null) {
             throw new IllegalStateException("The client has been closed.");
         }
-        return new WrappedMessageContext(this.getClient().getResponseContext(),
-                                                          null,
-                                                          Scope.APPLICATION);
+        return new WrappedMessageContext(this.getClient().getResponseContext(), null, Scope.APPLICATION);
     }
 
     public Binding getBinding() {
@@ -332,5 +338,5 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
             throw new IllegalStateException("The client has been closed.");
         }
         return builder.getEndpointReference(clazz);
-    }    
+    }
 }

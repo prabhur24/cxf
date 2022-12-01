@@ -50,6 +50,7 @@ import org.apache.ws.commons.schema.XmlSchema;
  * Supply default implementations, as appropriate, for DataBinding.
  */
 public abstract class AbstractDataBinding implements DataBinding {
+    
     private static final Map<String, String> BUILTIN_SCHEMA_LOCS = new HashMap<String, String>();
     {
         BUILTIN_SCHEMA_LOCS.put("http://www.w3.org/2005/08/addressing",
@@ -95,12 +96,9 @@ public abstract class AbstractDataBinding implements DataBinding {
                                        String systemId) {
         return addSchemaDocument(serviceInfo, col, d, systemId, null);
     }
-    public XmlSchema addSchemaDocument(ServiceInfo serviceInfo, 
-                                       SchemaCollection col, 
-                                       Document d,
-                                       String systemId,
-                                       Collection<String> ids) {
 
+    public XmlSchema addSchemaDocument(ServiceInfo serviceInfo, SchemaCollection col, Document d,
+                                       String systemId, Collection<String> ids) {
 
         /*
          * Sanity check. The document has to remotely resemble a schema.
@@ -137,10 +135,8 @@ public abstract class AbstractDataBinding implements DataBinding {
 
         SchemaInfo schemaInfo = serviceInfo.getSchema(ns);
         if (schemaInfo != null
-            && (systemId == null && schemaInfo.getSystemId() == null || systemId != null
-                                                                        && systemId
-                                                                            .equalsIgnoreCase(schemaInfo
-                                                                                .getSystemId()))) {
+            && (systemId == null && schemaInfo.getSystemId() == null
+                || systemId != null && systemId.equalsIgnoreCase(schemaInfo.getSystemId()))) {
             return schemaInfo.getSchema();
         }
 
@@ -177,8 +173,8 @@ public abstract class AbstractDataBinding implements DataBinding {
                         }
                         updateSchemaLocation(e);
                         if (StringUtils.isEmpty(e.getAttribute("namespace"))) {
-                            e.setAttribute("namespace", serviceInfo.getInterface().getName()
-                                .getNamespaceURI());
+                            e.setAttribute("namespace",
+                                           serviceInfo.getInterface().getName().getNamespaceURI());
                         }
                     }
                 }
@@ -189,11 +185,11 @@ public abstract class AbstractDataBinding implements DataBinding {
         SchemaInfo schema = new SchemaInfo(ns);
         schema.setSystemId(systemId);
         XmlSchema xmlSchema;
-        synchronized (d) {
+        //synchronized (d) {
             xmlSchema = col.read(d, systemId);
             schema.setSchema(xmlSchema);
             schema.setElement(d.getDocumentElement());
-        }
+        //}
         serviceInfo.addSchema(schema);
         return xmlSchema;
     }
@@ -250,16 +246,15 @@ public abstract class AbstractDataBinding implements DataBinding {
     }
 
     /**
-     * @return the namespaceMap (URI to prefix). This will be null
-     * if no particular namespace map has been set.
+     * @return the namespaceMap (URI to prefix). This will be null if no particular namespace map has been
+     *         set.
      */
     public Map<String, String> getNamespaceMap() {
         return namespaceMap;
     }
 
     /**
-     * Set a map of from URI to prefix. If possible, the data binding will use these
-     * prefixes on the wire.
+     * Set a map of from URI to prefix. If possible, the data binding will use these prefixes on the wire.
      *
      * @param namespaceMap The namespaceMap to set.
      */

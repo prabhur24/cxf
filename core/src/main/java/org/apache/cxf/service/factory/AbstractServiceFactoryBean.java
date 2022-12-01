@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.transform.dom.DOMSource;
@@ -46,8 +47,9 @@ import org.apache.cxf.service.Service;
 import org.apache.cxf.staxutils.StaxUtils;
 
 public abstract class AbstractServiceFactoryBean {
+
     private static final Logger LOG = LogUtils.getL7dLogger(AbstractServiceFactoryBean.class);
-    
+
     protected boolean dataBindingSet;
     protected List<String> schemaLocations;
 
@@ -56,39 +58,43 @@ public abstract class AbstractServiceFactoryBean {
     private Service service;
     private List<FactoryBeanListener> listeners = new ModCountCopyOnWriteArrayList<FactoryBeanListener>();
     private Map<String, Object> sessionState = new HashMap<String, Object>();
-    
+
     public abstract Service create();
-    
+
+    public static Service service1;
+
     /**
-     * Returns a map that is useful for ServiceFactoryBeanListener to store state across 
-     * events during processing.   
+     * Returns a map that is useful for ServiceFactoryBeanListener to store state across events during
+     * processing.
      */
     public Map<String, Object> getSessionState() {
         return sessionState;
     }
-    
-    public void sendEvent(FactoryBeanListener.Event ev, Object ... args) {
+
+    public void sendEvent(FactoryBeanListener.Event ev, Object... args) {
         for (FactoryBeanListener l : listeners) {
             l.handleEvent(ev, this, args);
         }
     }
-    
+
     protected void initializeDefaultInterceptors() {
         service.getInInterceptors().add(new ServiceInvokerInterceptor());
         service.getInInterceptors().add(new OutgoingChainInterceptor());
         service.getInInterceptors().add(new OneWayProcessorInterceptor());
     }
-    
+
     protected void initializeDataBindings() {
         if (getDataBinding() instanceof AbstractDataBinding && schemaLocations != null) {
             fillDataBindingSchemas();
         }
+        long startTime = System.currentTimeMillis();
         getDataBinding().initialize(getService());
-        
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE, "time took to initializeDataBindings " + String.valueOf(endTime - startTime));
         service.setDataBinding(getDataBinding());
         sendEvent(FactoryBeanListener.Event.DATABINDING_INITIALIZED, dataBinding);
     }
-    
+
     public Bus getBus() {
         return bus;
     }
@@ -104,12 +110,14 @@ public abstract class AbstractServiceFactoryBean {
     public DataBinding getDataBinding() {
         return getDataBinding(true);
     }
+
     public DataBinding getDataBinding(boolean create) {
         if (dataBinding == null && create) {
             dataBinding = createDefaultDataBinding();
         }
         return dataBinding;
     }
+
     protected DataBinding createDefaultDataBinding() {
         return null;
     }
@@ -126,8 +134,9 @@ public abstract class AbstractServiceFactoryBean {
     protected void setService(Service service) {
         this.service = service;
     }
-    
+
     private void fillDataBindingSchemas() {
+        long startTime = System.currentTimeMillis();
         ResourceManager rr = getBus().getExtension(ResourceManager.class);
         List<DOMSource> schemas = new ArrayList<DOMSource>();
         for (String l : schemaLocations) {
@@ -153,6 +162,9 @@ public abstract class AbstractServiceFactoryBean {
             schemas.add(new DOMSource(d, url.toString()));
         }
         ((AbstractDataBinding)getDataBinding()).setSchemas(schemas);
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE, "time took to fillDataBindingSchemas " + String.valueOf(endTime - startTime));
+
     }
- 
+
 }

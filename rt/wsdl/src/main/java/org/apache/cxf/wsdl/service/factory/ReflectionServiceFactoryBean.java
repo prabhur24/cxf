@@ -172,6 +172,10 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
     private String styleCache;
     private Boolean defWrappedCache;
 
+    private static Invoker cpyInvoker;
+    private static DataBinding cpyDataBinding;
+    private static CatalogXmlSchemaURIResolver resolver;
+
     public ReflectionServiceFactoryBean() {
         getServiceConfigurations().add(0, new DefaultServiceConfiguration());
         ignoredClasses.addAll(Arrays.asList(new String[] {
@@ -225,7 +229,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
         }
     }
 
-    private static synchronized Class<? extends DataBinding> getJAXBClass() throws ClassNotFoundException {
+    private static Class<? extends DataBinding> getJAXBClass() throws ClassNotFoundException {
         if (defaultDatabindingClass == null) {
             defaultDatabindingClass = ClassLoaderUtils.loadClass("org.apache.cxf.jaxb.JAXBDataBinding",
                                                                  ReflectionServiceFactoryBean.class,
@@ -243,6 +247,18 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
     @Override
     public Service create() {
+        if (false && service1 != null) {
+            long startTime = System.currentTimeMillis();
+            this.setService(service1);
+            service1.setInvoker(cpyInvoker);
+            service1.setDataBinding(cpyDataBinding);
+            service1.setExecutor(getExecutor());
+            getService().put(MethodDispatcher.class.getName(), getMethodDispatcher());
+            createEndpoints();
+            long endTime = System.currentTimeMillis();
+            LOG.log(Level.SEVERE, "time took to createservicecpy " + String.valueOf(endTime - startTime));
+            return service1;
+        }
         reset();
         sendEvent(Event.START_CREATE);
         initializeServiceConfigurations();
@@ -253,7 +269,9 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
         if (invoker != null) {
             getService().setInvoker(getInvoker());
+            cpyInvoker = getInvoker();
         } else {
+            cpyInvoker = createInvoker();
             getService().setInvoker(createInvoker());
         }
 
@@ -261,7 +279,8 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
             getService().setExecutor(getExecutor());
         }
         if (getDataBinding() != null) {
-            getService().setDataBinding(getDataBinding());
+            cpyDataBinding = getDataBinding();
+            getService().setDataBinding(cpyDataBinding);
         }
 
         getService().put(MethodDispatcher.class.getName(), getMethodDispatcher());
@@ -271,6 +290,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
         Service serv = getService();
         sendEvent(Event.END_CREATE, serv);
+        service1 = serv;
         return serv;
     }
 
@@ -421,13 +441,17 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
         if (Proxy.isProxyClass(this.getServiceClass())) {
             LOG.log(Level.WARNING, "USING_PROXY_FOR_SERVICE", getServiceClass());
+            LOG.log(Level.SEVERE, "USING_PROXY_FOR_SERVICE", getServiceClass());
         }
 
         sendEvent(Event.CREATE_FROM_CLASS, getServiceClass());
 
         ServiceInfo serviceInfo = new ServiceInfo();
         SchemaCollection col = serviceInfo.getXmlSchemaCollection();
-        col.getXmlSchemaCollection().setSchemaResolver(new CatalogXmlSchemaURIResolver(this.getBus()));
+        if (resolver == null) {
+            resolver = new CatalogXmlSchemaURIResolver(this.getBus());
+        }
+        col.getXmlSchemaCollection().setSchemaResolver(resolver);
         col.getExtReg().registerSerializer(MimeAttribute.class, new MimeSerializer());
 
         ServiceImpl service = new ServiceImpl(serviceInfo);
@@ -447,6 +471,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
                 si.setProperty(EXTRA_CLASS, wrapperClasses);
             }
         }
+
         initializeDataBindings();
 
         boolean isWrapped = isWrapped() || hasWrappedMethods(serviceInfo.getInterface());
@@ -454,6 +479,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
             initializeWrappedSchema(serviceInfo);
         }
 
+        long startTime = System.currentTimeMillis();
         for (OperationInfo opInfo : serviceInfo.getInterface().getOperations()) {
             Method m = (Method)opInfo.getProperty(METHOD);
             if (!isWrapped(m) && !isRPC(m) && opInfo.getInput() != null) {
@@ -477,7 +503,12 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
                 }
             }
         }
-        if (LOG.isLoggable(Level.FINE) || isValidate()) {
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE,
+                "no of operations " + String.valueOf(serviceInfo.getInterface().getOperations().size())
+                              + " and took  " + String.valueOf(endTime - startTime));
+
+        if (false && (LOG.isLoggable(Level.FINE) || isValidate())) {
             ServiceModelSchemaValidator validator = new ServiceModelSchemaValidator(serviceInfo);
             validator.walk();
             String validationComplaints = validator.getComplaints();
@@ -508,14 +539,22 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
         if (isFromWsdl()) {
             buildServiceFromWSDL(getWsdlURL());
         } else if (getServiceClass() != null) {
+            long startTime = System.currentTimeMillis();
             buildServiceFromClass();
+            long endTime = System.currentTimeMillis();
+            LOG.log(Level.SEVERE,
+                    "time took to initializeServiceModel " + String.valueOf(endTime - startTime));
         } else {
             throw new ServiceConstructionException(new Message("NO_WSDL_NO_SERVICE_CLASS_PROVIDED", LOG,
                                                                getWsdlURL()));
         }
 
         if (isValidate()) {
+            long startTime = System.currentTimeMillis();
             validateServiceModel();
+            long endTime = System.currentTimeMillis();
+            LOG.log(Level.SEVERE,
+                    "time took to initializeServiceModel isValidate " + String.valueOf(endTime - startTime));
         }
     }
 

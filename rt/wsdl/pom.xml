@@ -87,9 +87,9 @@
                     <execution>
                         <id>generate-test-sources</id>
                         <phase>generate-test-sources</phase>
-                        <goals>
+                        <!--goals>
                             <goal>xsdtojava-tests</goal>
-                        </goals>
+                        </goals-->
                         <configuration>
                             <testSourceRoot>${basedir}/target/generated/src/test/java</testSourceRoot>
                             <xsdOptions>

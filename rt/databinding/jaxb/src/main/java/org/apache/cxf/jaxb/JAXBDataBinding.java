@@ -197,14 +197,23 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
     private ValidationEventHandler validationEventHandler;
 
     private boolean unwrapJAXBElement = true;
-    private boolean scanPackages = true;
+    private boolean scanPackages = false;
     private boolean qualifiedSchemas;
 
+    private static JAXBContextInitializer initializerlocal;
+    private static JAXBContext jaxbContext;
+    private static Map<String, Annotation[]> cpyAnns = new HashMap<String, Annotation[]>();
+    private static Set<DOMSource> cpyBiDom = new LinkedHashSet<DOMSource>();
+
+    private static CachedContextAndSchemas cpyCachedContextAndSchemas;
+
     public JAXBDataBinding() {
+
     }
 
     public JAXBDataBinding(boolean q) {
         this.qualifiedSchemas = q;
+        LOG.log(Level.FINE, "qualifiedSchemas" + qualifiedSchemas);
     }
 
     public JAXBDataBinding(Class<?>... classes) throws JAXBException {
@@ -305,28 +314,66 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
         contextClasses = new LinkedHashSet<Class<?>>();
         Map<String, Object> unmarshallerProps = new HashMap<String, Object>();
         this.setUnmarshallerProperties(unmarshallerProps);
-        for (ServiceInfo serviceInfo : service.getServiceInfos()) {
+        boolean isAdditionalClassRequired = true;
+        if (isAdditionalClassRequired) {
+            for (ServiceInfo serviceInfo : service.getServiceInfos()) {
 
-            JAXBContextInitializer initializer = new JAXBContextInitializer(serviceInfo, contextClasses,
-                                                                            typeRefs,
-                                                                            this.getUnmarshallerProperties());
-            initializer.walk();
-            if (serviceInfo.getProperty("extra.class") != null) {
-                Set<Class<?>> exClasses = serviceInfo.getProperty("extra.class", Set.class);
-                contextClasses.addAll(exClasses);
+                JAXBContextInitializer initializer = null;
+                if (initializer == null) {
+                    long startTime = System.currentTimeMillis();
+                    initializer = new JAXBContextInitializer(serviceInfo, contextClasses, typeRefs,
+                                                             this.getUnmarshallerProperties());
+                    initializerlocal = initializer;
+                    initializerlocal.walk();
+                    long endTime = System.currentTimeMillis();
+                    LOG.log(Level.SEVERE,
+                            "time took to walk initializer " + String.valueOf(endTime - startTime));
+                } else {
+                    long startTime = System.currentTimeMillis();
+                    initializerlocal.walk();
+                    long endTime = System.currentTimeMillis();
+                    LOG.log(Level.SEVERE,
+                            "time took to walk initializerr " + String.valueOf(endTime - startTime));
+                    // initializer = initializerlocal;
+                }
+                if (serviceInfo.getProperty("extra.class") != null) {
+                    Set<Class<?>> exClasses = serviceInfo.getProperty("extra.class", Set.class);
+                    contextClasses.addAll(exClasses);
+                }
             }
-
         }
 
-        String tns = getNamespaceToUse(service);
-        CachedContextAndSchemas cachedContextAndSchemas = null;
         JAXBContext ctx = null;
-        try {
-            cachedContextAndSchemas = createJAXBContextAndSchemas(contextClasses, tns);
-        } catch (JAXBException e1) {
-            throw new ServiceConstructionException(e1);
+        CachedContextAndSchemas cachedContextAndSchemas = null;
+        String tns = getNamespaceToUse(service);
+        if (jaxbContext == null) {
+            // String tns = getNamespaceToUse(service);
+            ctx = null;
+            try {
+                long startTime = System.currentTimeMillis();
+                cachedContextAndSchemas = createJAXBContextAndSchemas(contextClasses, tns);
+                cpyCachedContextAndSchemas = cachedContextAndSchemas;
+                long endTime = System.currentTimeMillis();
+                LOG.log(Level.SEVERE,
+                        "time took to createJAXBContextAndSchemas " + String.valueOf(endTime - startTime));
+            } catch (JAXBException e1) {
+                throw new ServiceConstructionException(e1);
+            }
+            ctx = cachedContextAndSchemas.getContext();
+            jaxbContext = ctx;
+        } else {
+            boolean isUpdated = false;
+            try {
+                cachedContextAndSchemas = cpyCachedContextAndSchemas;
+                ctx = cpyCachedContextAndSchemas.getContext();
+                isUpdated = true;
+            } catch (Exception e) {
+                ctx = jaxbContext;
+            }
+            if (!isUpdated) {
+                ctx = jaxbContext;
+            }
         }
-        ctx = cachedContextAndSchemas.getContext();
         if (LOG.isLoggable(Level.FINE)) {
             LOG.log(Level.FINE, "CREATED_JAXB_CONTEXT", new Object[] {
                                                                       ctx, contextClasses
@@ -354,25 +401,29 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
                 schemasFromCache = true;
             }
             Set<DOMSource> bi = new LinkedHashSet<DOMSource>();
-            if (schemas == null) {
-                schemas = new LinkedHashSet<DOMSource>();
-                try {
-                    for (DOMResult r : generateJaxbSchemas()) {
-                        DOMSource src = new DOMSource(r.getNode(), r.getSystemId());
-                        if (BUILT_IN_SCHEMAS.containsValue(r)) {
-                            bi.add(src);
-                        } else {
-                            schemas.add(src);
+            if (cpyBiDom.isEmpty()) {
+                if (schemas == null) {
+                    schemas = new LinkedHashSet<DOMSource>();
+                    try {
+                        for (DOMResult r : generateJaxbSchemas()) {
+                            DOMSource src = new DOMSource(r.getNode(), r.getSystemId());
+                            if (BUILT_IN_SCHEMAS.containsValue(r)) {
+                                bi.add(src);
+                            } else {
+                                schemas.add(src);
+                            }
                         }
+                        // put any builtins at the end. Anything that DOES import them
+                        // will cause it to load automatically and we'll skip them later
+                        schemas.addAll(bi);
+                    } catch (IOException e) {
+                        throw new ServiceConstructionException("SCHEMA_GEN_EXC", LOG, e);
                     }
-                    // put any builtins at the end. Anything that DOES import them
-                    // will cause it to load automatically and we'll skip them later
-                    schemas.addAll(bi);
-                } catch (IOException e) {
-                    throw new ServiceConstructionException("SCHEMA_GEN_EXC", LOG, e);
                 }
+                cpyBiDom = bi;
             }
             Set<String> ids = new HashSet<String>();
+
             for (DOMSource r : schemas) {
                 ids.add(r.getSystemId());
             }
@@ -386,9 +437,12 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
                 addSchemaDocument(serviceInfo, col, (Document)r.getNode(), r.getSystemId());
             }
 
+            long startTime = System.currentTimeMillis();
             JAXBSchemaInitializer schemaInit = new JAXBSchemaInitializer(serviceInfo, col, context,
                                                                          this.qualifiedSchemas, tns);
             schemaInit.walk();
+            long endTime = System.currentTimeMillis();
+            LOG.log(Level.SEVERE, "time took to walk schemaInit " + String.valueOf(endTime - startTime));
             if (cachedContextAndSchemas != null && !schemasFromCache) {
                 cachedContextAndSchemas.setSchemas(schemas);
             }
@@ -398,8 +452,13 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
     private void justCheckForJAXBAnnotations(ServiceInfo serviceInfo) {
         for (MessageInfo mi : serviceInfo.getMessages().values()) {
             for (MessagePartInfo mpi : mi.getMessageParts()) {
-                checkForJAXBAnnotations(mpi, serviceInfo.getXmlSchemaCollection(),
-                                        serviceInfo.getTargetNamespace());
+                String namespace = serviceInfo.getTargetNamespace();
+                if (cpyAnns.get(namespace) != null) {
+                    mpi.setProperty("parameter.annotations", cpyAnns.get(namespace));
+                    mpi.setProperty("honor.jaxb.annotations", Boolean.TRUE);
+                } else {
+                    checkForJAXBAnnotations(mpi, serviceInfo.getXmlSchemaCollection(), namespace);
+                }
             }
         }
     }
@@ -414,6 +473,10 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
             if (jtaBeanInfo != beanInfo) {
                 mpi.setProperty("parameter.annotations", anns);
                 mpi.setProperty("honor.jaxb.annotations", Boolean.TRUE);
+                if (cpyAnns == null) {
+                    cpyAnns = new HashMap<String, Annotation[]>();
+                }
+                cpyAnns.put(ns, anns);
             }
         }
     }
@@ -455,6 +518,7 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
     public CachedContextAndSchemas createJAXBContextAndSchemas(Set<Class<?>> classes, String defaultNs)
         throws JAXBException {
         // add user extra class into jaxb context
+        // int size = extraClass.length;
         if (extraClass != null && extraClass.length > 0) {
             for (Class<?> clz : extraClass) {
                 classes.add(clz);
