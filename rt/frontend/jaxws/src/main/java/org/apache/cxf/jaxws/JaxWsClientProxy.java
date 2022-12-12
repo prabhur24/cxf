@@ -126,8 +126,8 @@ public class JaxWsClientProxy extends org.apache.cxf.frontend.ClientProxy implem
         }
 
         client.getRequestContext().put(Method.class.getName(), method);
-        boolean isAsync = isAsync(method);
-
+        //boolean isAsync = isAsync(method);
+        boolean isAsync = false;
         Object result = null;
         try {
             if (isAsync) {

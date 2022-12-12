@@ -176,12 +176,16 @@ public class PhaseInterceptorChain implements InterceptorChain {
         return false;
         
     }
-    
-    public synchronized State getState() {
+
+    //prabhu
+    //public synchronized State getState()  {
+    public State getState() {
         return state;
     }
-    
-    public synchronized void releaseAndAcquireChain() {
+
+    //prabhu
+    //public synchronized void releaseAndAcquireChain() {
+    public void releaseAndAcquireChain() {
         while (!chainReleased) {
             try {
                 this.wait();
@@ -191,8 +195,10 @@ public class PhaseInterceptorChain implements InterceptorChain {
         }
         chainReleased = false;
     }
-    
-    public synchronized void releaseChain() {
+
+    //prabhu
+    //public synchronized void releaseChain() {
+    public void releaseChain() {
         this.chainReleased = true;
         this.notifyAll();
     }
@@ -253,23 +259,32 @@ public class PhaseInterceptorChain implements InterceptorChain {
         }
     }
 
-    public synchronized void pause() {
+    //prabhu
+    //public synchronized void pause() {
+    public void pause() {
         state = State.PAUSED;
         pausedMessage = CURRENT_MESSAGE.get();
     }
-    public synchronized void unpause() {
+    
+    //prabhu
+    //public synchronized void unpause() {
+    public void unpause() {
         if (state == State.PAUSED || state == State.SUSPENDED) {
             state = State.EXECUTING;
             pausedMessage = null;
         }
     }
     
-    public synchronized void suspend() {
+    //prabhu
+    // public synchronized void suspend() {
+    public void suspend() {
         state = State.SUSPENDED;
         pausedMessage = CURRENT_MESSAGE.get();
     }
 
-    public synchronized void resume() {
+    //prabhu
+    //public synchronized void resume() {
+    public void resume() {
         if (state == State.PAUSED || state == State.SUSPENDED) {
             state = State.EXECUTING;
             Message m = pausedMessage;
@@ -285,7 +300,9 @@ public class PhaseInterceptorChain implements InterceptorChain {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public synchronized boolean doIntercept(Message message) {
+    //prabhu
+    //public synchronized boolean doIntercept(Message message) {
+    public boolean doIntercept(Message message) {
         updateIterator();
 
         Message oldMessage = CURRENT_MESSAGE.get();
@@ -301,10 +318,18 @@ public class PhaseInterceptorChain implements InterceptorChain {
                 try {
                     Interceptor<Message> currentInterceptor = (Interceptor<Message>)iterator.next();
                     if (isFineLogging) {
-                        LOG.fine("Invoking handleMessage on interceptor " + currentInterceptor);
+                        LOG.log(Level.SEVERE, "Invoking handleMessage on interceptor " + currentInterceptor);
                     }
-                    //System.out.println("-----------" + currentInterceptor);
+                    long startTime = System.currentTimeMillis();
+                    // System.out.println("-----------" + currentInterceptor);
                     currentInterceptor.handleMessage(message);
+                    long endTime = System.currentTimeMillis();
+                    if ((endTime - startTime) > 999) {
+                        LOG.log(Level.SEVERE,
+                                "Invoking handleMessage on interceptor "
+                                              + currentInterceptor.getClass().getSimpleName() + " time took "
+                                              + String.valueOf(endTime - startTime));
+                    }
                     if (state == State.SUSPENDED) {
                          // throw the exception to make sure thread exit without interrupt
                         throw new SuspendedInvocationException();
@@ -421,7 +446,9 @@ public class PhaseInterceptorChain implements InterceptorChain {
      * @param startingAfterInterceptorID the id of the interceptor 
      * @throws Exception
      */
-    public synchronized boolean doInterceptStartingAfter(Message message,
+    //prabhu
+    //public synchronized boolean doInterceptStartingAfter(Message message,
+    public boolean doInterceptStartingAfter(Message message,
                                                          String startingAfterInterceptorID) {
         updateIterator();
         while (state == State.EXECUTING && iterator.hasNext()) {
@@ -442,7 +469,9 @@ public class PhaseInterceptorChain implements InterceptorChain {
      * @param startingAtInterceptorID the id of the interceptor 
      * @throws Exception
      */
-    public synchronized boolean doInterceptStartingAt(Message message,
+    //prabhu
+    // public synchronized boolean doInterceptStartingAt(Message message,
+    public boolean doInterceptStartingAt(Message message,
                                                          String startingAtInterceptorID) {
         updateIterator();
         while (state == State.EXECUTING && iterator.hasNext()) {
@@ -456,7 +485,8 @@ public class PhaseInterceptorChain implements InterceptorChain {
         return doIntercept(message);
     }
 
-    public synchronized void reset() {
+    //public synchronized void reset() {
+    public void reset() {
         updateIterator();
         if (state == State.COMPLETE) {
             state = State.EXECUTING;
@@ -496,7 +526,9 @@ public class PhaseInterceptorChain implements InterceptorChain {
         }
     }
 
-    public synchronized void abort() {
+    //prabhu
+    //public synchronized void abort() {
+    public void abort() {
         this.state = InterceptorChain.State.ABORTED;
     }
 

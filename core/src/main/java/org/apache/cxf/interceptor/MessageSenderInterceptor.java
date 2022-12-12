@@ -33,6 +33,7 @@ import org.apache.cxf.transport.Conduit;
  * Takes the Conduit from the exchange and sends the message through it.
  */
 public class MessageSenderInterceptor extends AbstractPhaseInterceptor<Message> {
+
     private static final ResourceBundle BUNDLE = BundleUtils.getBundle(MessageSenderInterceptor.class);
     private MessageSenderEndingInterceptor ending = new MessageSenderEndingInterceptor();
     

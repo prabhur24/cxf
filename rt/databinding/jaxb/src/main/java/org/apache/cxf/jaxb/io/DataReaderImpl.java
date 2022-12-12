@@ -48,6 +48,8 @@ public class DataReaderImpl<T> extends JAXBDataBase implements DataReader<T> {
     ValidationEventHandler veventHandler;
     boolean setEventHandler = true;
     
+    private static Unmarshaller unmarshaller;
+    
     public DataReaderImpl(JAXBDataBinding binding, boolean unwrap) {
         super(binding.getContext());
         unwrapJAXBElement = unwrap;
@@ -148,17 +150,19 @@ public class DataReaderImpl<T> extends JAXBDataBase implements DataReader<T> {
                 // TODO:Cache the JAXBRIContext
                 QName qname = new QName(null, part.getConcreteName().getLocalPart());
 
-                return JAXBEncoderDecoder.unmarshalWithBridge(qname, 
-                                                              part.getTypeClass(), 
-                                                              anns, 
-                                                              databinding.getContextClasses(), 
-                                                              reader, 
+                return JAXBEncoderDecoder.unmarshalWithBridge(qname, part.getTypeClass(), anns,
+                                                              databinding.getContextClasses(), reader,
                                                               getAttachmentUnmarshaller());
             }
         }
-        
-        return JAXBEncoderDecoder.unmarshall(createUnmarshaller(), reader, part, 
-                                             unwrapJAXBElement);
+        if (unmarshaller != null) {
+            return JAXBEncoderDecoder.unmarshall(unmarshaller, reader, part, unwrapJAXBElement);
+        }
+        long startTime = System.currentTimeMillis();
+        unmarshaller = createUnmarshaller();
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE, "Time took to createUnmarshaller " + String.valueOf(endTime - startTime));
+        return JAXBEncoderDecoder.unmarshall(unmarshaller, reader, part, unwrapJAXBElement);
     }
 
     public Object read(QName name, T input, Class<?> type) {

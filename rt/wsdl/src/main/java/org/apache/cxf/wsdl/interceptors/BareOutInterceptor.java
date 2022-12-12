@@ -36,6 +36,7 @@ public class BareOutInterceptor extends AbstractOutDatabindingInterceptor {
     }
 
     public void handleMessage(Message message) {
+
         Exchange exchange = message.getExchange();
         BindingOperationInfo operation = (BindingOperationInfo)exchange.get(BindingOperationInfo.class
             .getName());

@@ -644,10 +644,7 @@ public final class JAXBEncoderDecoder {
     }
 
 
-    public static Object unmarshall(Unmarshaller u, 
-                                    Object source, 
-                                    MessagePartInfo part,
-                                    boolean unwrap) {
+    public static Object unmarshall(Unmarshaller u, Object source, MessagePartInfo part, boolean unwrap) {
         Class<?> clazz = part != null ? (Class<?>)part.getTypeClass() : null;
         if (clazz != null && Exception.class.isAssignableFrom(clazz) && part != null
             && Boolean.TRUE.equals(part.getProperty(JAXBDataBinding.class.getName() + ".CUSTOM_EXCEPTION"))) {
@@ -659,14 +656,13 @@ public final class JAXBEncoderDecoder {
             && part.getXmlSchema() instanceof XmlSchemaElement) {
             XmlSchemaElement el = (XmlSchemaElement)part.getXmlSchema();
 
-            if (el.getSchemaType() instanceof XmlSchemaSimpleType
-                && ((XmlSchemaSimpleType)el.getSchemaType()).getContent() 
-                instanceof XmlSchemaSimpleTypeList) {
+            if (el.getSchemaType() instanceof XmlSchemaSimpleType && ((XmlSchemaSimpleType)el.getSchemaType())
+                .getContent() instanceof XmlSchemaSimpleTypeList) {
 
                 Object obj = unmarshall(u, source, elName, null, unwrap);
                 if (clazz.isArray() && obj instanceof List) {
                     return ((List<?>)obj).toArray((Object[])Array.newInstance(clazz.getComponentType(),
-                                                                           ((List<?>)obj).size()));
+                                                                              ((List<?>)obj).size()));
                 }
 
                 return obj;
@@ -695,8 +691,8 @@ public final class JAXBEncoderDecoder {
             String obj = (String)unmarshall(u, source, elName, String.class, unwrap);
             return new HexBinaryAdapter().unmarshal(obj);
         } else if (part != null && u.getSchema() != null
-            && !(part.getXmlSchema() instanceof XmlSchemaElement)) {
-            //Validating RPC/Lit, make sure we don't try a root element name thing
+                   && !(part.getXmlSchema() instanceof XmlSchemaElement)) {
+            // Validating RPC/Lit, make sure we don't try a root element name thing
             source = updateSourceWithXSIType(source, part.getTypeQName());
         }
 
@@ -860,36 +856,35 @@ public final class JAXBEncoderDecoder {
         }
         return unwrap ? getElementValue(obj) : obj;
     }
-    public static Object unmarshall(final Unmarshaller u,
-                                    final Object source,
-                                    final QName elName,
-                                    final Class<?> clazz,
-                                    final boolean unwrap) {
+
+    public static Object unmarshall(final Unmarshaller u, final Object source, final QName elName,
+                                    final Class<?> clazz, final boolean unwrap) {
         try {
-            return AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
-                public Object run() throws Exception {
-                    return doUnmarshal(u, source, elName, clazz, unwrap);
-                }
-            });
-        } catch (PrivilegedActionException e) {
-            Exception ex = e.getException();
+            return doUnmarshal(u, source, elName, clazz, unwrap);
+            // return AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
+            // public Object run() throws Exception {
+            // return doUnmarshal(u, source, elName, clazz, unwrap);
+            // }
+            // });
+        } catch (Exception ex) {
+            // Exception ex = e.getException();
             if (ex instanceof Fault) {
                 throw (Fault)ex;
             }
             if (ex instanceof javax.xml.bind.UnmarshalException) {
                 javax.xml.bind.UnmarshalException unmarshalEx = (javax.xml.bind.UnmarshalException)ex;
                 if (unmarshalEx.getLinkedException() != null) {
-                    throw new Fault(new Message("UNMARSHAL_ERROR", LOG, 
-                                            unmarshalEx.getLinkedException().getMessage()), ex);
+                    throw new Fault(new Message("UNMARSHAL_ERROR", LOG,
+                                                unmarshalEx.getLinkedException().getMessage()),
+                                    ex);
                 } else {
-                    throw new Fault(new Message("UNMARSHAL_ERROR", LOG, 
-                                                unmarshalEx.getMessage()), ex);                    
+                    throw new Fault(new Message("UNMARSHAL_ERROR", LOG, unmarshalEx.getMessage()), ex);
                 }
             }
             throw new Fault(new Message("UNMARSHAL_ERROR", LOG, ex.getMessage()), ex);
-        }        
+        }
     }
-    
+
     private static XMLStreamReader findExtraNamespaces(XMLStreamReader source) {
         //due to a deficiency in the Stax API, there isn't a way to get all
         //the namespace prefixes that are "valid" at this point.  Thus, JAXB

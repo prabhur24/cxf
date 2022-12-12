@@ -48,6 +48,7 @@ import org.apache.cxf.staxutils.DepthXMLStreamReader;
 import org.apache.cxf.staxutils.StaxUtils;
 
 public class BareInInterceptor extends AbstractInDatabindingInterceptor {
+
     private static final Logger LOG = LogUtils.getL7dLogger(BareInInterceptor.class);
 
     private static Set<String> filter = new HashSet<String>();
@@ -62,6 +63,7 @@ public class BareInInterceptor extends AbstractInDatabindingInterceptor {
     }
 
     public void handleMessage(Message message) {
+
         if (isGET(message) && message.getContent(List.class) != null) {
             LOG.fine("BareInInterceptor skipped in HTTP GET method");
             return;
