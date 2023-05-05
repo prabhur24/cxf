@@ -263,7 +263,10 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
         sendEvent(Event.START_CREATE);
         initializeServiceConfigurations();
 
+        long startTime = System.currentTimeMillis();
         initializeServiceModel();
+        long endTime = System.currentTimeMillis();
+        LOG.log(Level.SEVERE, "time took to initializeServiceModel " + String.valueOf(endTime - startTime));
 
         initializeDefaultInterceptors();
 
@@ -437,6 +440,7 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
         if (LOG.isLoggable(Level.INFO)) {
             LOG.info("Creating Service " + getServiceQName() + " from class " + getServiceClass().getName());
         }
+        LOG.severe("Creating Service " + getServiceQName() + " from class " + getServiceClass().getName());
         populateFromClass = true;
 
         if (Proxy.isProxyClass(this.getServiceClass())) {

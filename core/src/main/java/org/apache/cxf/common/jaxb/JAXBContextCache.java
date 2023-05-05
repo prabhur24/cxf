@@ -64,6 +64,7 @@ public final class JAXBContextCache {
      */
 
     static CachedContextAndSchemas CONTEXT_AND_SCHEMAS;
+    public static JAXBContext CACHED_CONTEXT;
 
     // private static final Logger LOG = LogUtils.getL7dLogger(JAXBContextCache.class);
 
@@ -266,7 +267,12 @@ public final class JAXBContextCache {
                 try {
                     context = AccessController.doPrivileged(new PrivilegedExceptionAction<JAXBContext>() {
                         public JAXBContext run() throws Exception {
-                            return JAXBContext.newInstance(classes.toArray(new Class[classes.size()]), null);
+                            if (CACHED_CONTEXT != null) {
+                                return CACHED_CONTEXT;
+                            }
+                            CACHED_CONTEXT = JAXBContext
+                                .newInstance(classes.toArray(new Class[classes.size()]), null);
+                            return CACHED_CONTEXT;
                         }
                     });
                 } catch (PrivilegedActionException e) {
