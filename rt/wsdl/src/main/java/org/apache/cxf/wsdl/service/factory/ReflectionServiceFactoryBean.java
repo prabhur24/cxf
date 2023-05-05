@@ -2073,7 +2073,6 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
     protected void initializeDefaultInterceptors() {
         super.initializeDefaultInterceptors();
-
         initializeFaultInterceptors();
     }
 

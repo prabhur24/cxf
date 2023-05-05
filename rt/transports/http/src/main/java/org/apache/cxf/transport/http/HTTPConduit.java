@@ -617,9 +617,9 @@ public abstract class HTTPConduit
     }
     
     public void close(Message msg) throws IOException {
-        InputStream in = msg.getContent(InputStream.class);
+        //InputStream in = msg.getContent(InputStream.class);
         try {
-            if (in != null) {
+            /*if (in != null) {
                 int count = 0;
                 byte buffer[] = new byte[1024];
                 while (in.read(buffer) != -1
@@ -630,7 +630,7 @@ public abstract class HTTPConduit
                     //however, limit it so we don't read off gigabytes of data we won't use.
                     ++count;
                 }
-            } 
+            } */
         } finally {
             super.close(msg);
         }

@@ -158,7 +158,7 @@ public class DocLiteralInInterceptor extends AbstractInDatabindingInterceptor {
                     return;
                 }
 
-                setDataReaderValidation(service, message, dr);
+                //setDataReaderValidation(service, message, dr);
                 
                 int paramNum = 0;
     
