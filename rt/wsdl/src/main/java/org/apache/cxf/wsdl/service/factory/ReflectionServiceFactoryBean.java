@@ -247,23 +247,33 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
     @Override
     public Service create() {
+       // boolean requiredBinding = true;
         if (false && service1 != null) {
+            //requiredBinding = false;
             long startTime = System.currentTimeMillis();
             this.setService(service1);
+            //reset();
             service1.setInvoker(cpyInvoker);
             service1.setDataBinding(cpyDataBinding);
             service1.setExecutor(getExecutor());
-            getService().put(MethodDispatcher.class.getName(), getMethodDispatcher());
-            createEndpoints();
+            service1.put(MethodDispatcher.class.getName(), getMethodDispatcher());
+            //createEndpoints(service1);
             long endTime = System.currentTimeMillis();
             LOG.log(Level.SEVERE, "time took to createservicecpy " + String.valueOf(endTime - startTime));
-            return service1;
-        }
-        reset();
-        sendEvent(Event.START_CREATE);
-        initializeServiceConfigurations();
+            //return service1;
+            //setService(service1);
+        } else {
+           // requiredBinding  = true;
+            reset();
+            sendEvent(Event.START_CREATE);
+            initializeServiceConfigurations();
 
-        initializeServiceModel();
+            initializeServiceModel();
+            // if (cpyDataBinding != null) {
+            // getService().setDataBinding(cpyDataBinding);
+            // requiredBinding = false;
+            // }
+        }
 
         initializeDefaultInterceptors();
 
@@ -278,10 +288,10 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
         if (getExecutor() != null) {
             getService().setExecutor(getExecutor());
         }
-        if (getDataBinding() != null) {
-            cpyDataBinding = getDataBinding();
-            getService().setDataBinding(cpyDataBinding);
-        }
+        // if ((cpyDataBinding = getDataBinding()) != null) {
+        // cpyDataBinding = getDataBinding();
+        getService().setDataBinding(getDataBinding());
+        // }
 
         getService().put(MethodDispatcher.class.getName(), getMethodDispatcher());
         createEndpoints();
@@ -333,6 +343,33 @@ public class ReflectionServiceFactoryBean extends org.apache.cxf.service.factory
 
     protected void createEndpoints() {
         Service service = getService();
+
+        BindingFactoryManager bfm = getBus().getExtension(BindingFactoryManager.class);
+
+        for (ServiceInfo inf : service.getServiceInfos()) {
+            for (EndpointInfo ei : inf.getEndpoints()) {
+
+                for (BindingOperationInfo boi : ei.getBinding().getOperations()) {
+                    updateBindingOperation(boi);
+                }
+                try {
+                    bfm.getBindingFactory(ei.getBinding().getBindingId());
+                } catch (BusException e1) {
+                    continue;
+                }
+
+                try {
+                    Endpoint ep = createEndpoint(ei);
+
+                    service.getEndpoints().put(ei.getName(), ep);
+                } catch (EndpointException e) {
+                    throw new ServiceConstructionException(e);
+                }
+            }
+        }
+    }
+
+    protected void createEndpoints(Service service) {
 
         BindingFactoryManager bfm = getBus().getExtension(BindingFactoryManager.class);
 

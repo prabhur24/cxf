@@ -410,10 +410,10 @@ public class SoapBindingFactory extends AbstractWSDLBindingFactory {
             sb.getOutInterceptors().add(new RPCOutInterceptor());
         } else if (SoapBindingConstants.BINDING_STYLE_DOC.equalsIgnoreCase(bindingStyle)
                         && SoapBindingConstants.PARAMETER_STYLE_BARE.equalsIgnoreCase(parameterStyle)) {
-            //sb.getInInterceptors().add(new BareInInterceptor());
+            // sb.getInInterceptors().add(new BareInInterceptor());
             sb.getInInterceptors().add(new DocLiteralInInterceptor());
             if (hasWrapped) {
-                sb.getOutInterceptors().add(new WrappedOutInterceptor());                    
+                sb.getOutInterceptors().add(new WrappedOutInterceptor());
             }
             sb.getOutInterceptors().add(new BareOutInterceptor());
         } else {

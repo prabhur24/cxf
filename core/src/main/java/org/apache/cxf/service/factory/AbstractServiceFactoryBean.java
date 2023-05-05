@@ -78,9 +78,9 @@ public abstract class AbstractServiceFactoryBean {
     }
 
     protected void initializeDefaultInterceptors() {
-        service.getInInterceptors().add(new ServiceInvokerInterceptor());
-        service.getInInterceptors().add(new OutgoingChainInterceptor());
-        service.getInInterceptors().add(new OneWayProcessorInterceptor());
+        //service.getInInterceptors().add(new ServiceInvokerInterceptor());
+        //service.getInInterceptors().add(new OutgoingChainInterceptor());
+        //service.getInInterceptors().add(new OneWayProcessorInterceptor());
     }
 
     protected void initializeDataBindings() {
