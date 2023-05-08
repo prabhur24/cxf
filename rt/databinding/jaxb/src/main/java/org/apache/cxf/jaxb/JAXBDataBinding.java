@@ -360,7 +360,7 @@ public class JAXBDataBinding extends AbstractInterceptorProvidingDataBinding
                 throw new ServiceConstructionException(e1);
             }
             ctx = cachedContextAndSchemas.getContext();
-            jaxbContext = ctx;
+            // jaxbContext = ctx;
         } else {
             boolean isUpdated = false;
             try {

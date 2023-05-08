@@ -248,7 +248,8 @@ public final class JAXBContextCache {
             if (cachedContextAndSchemasInternal != null) {
                 context = cachedContextAndSchemasInternal.getContext();
                 if (context == null) {
-                    JAXBCONTEXT_CACHE.remove(cachedContextAndSchemasInternal.getClasses());
+                    //JAXBCONTEXT_CACHE.remove(cachedContextAndSchemasInternal.getClasses());
+                    JAXBCONTEXT_CACHE.get(cachedContextAndSchemasInternal.getClasses());
                     cachedContextAndSchemasInternal = null;
                 } else {
                     return new CachedContextAndSchemas(cachedContextAndSchemasInternal);
